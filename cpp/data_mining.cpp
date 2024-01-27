@@ -3,13 +3,11 @@
 #include <chrono>
 #include <map>
 #include <filesystem>
+#include <ranges>
 
 using namespace std::chrono_literals;
 
-class Dataset
-{
-
-};
+using Dataset = std::vector<Eigen::MatrixXd>;
 
 template<int order> double minkosky_distance(Eigen::MatrixXd p, Eigen::MatrixXd q)
 {
@@ -30,9 +28,10 @@ double sort_based_on_distance(Eigen::MatrixXd  x)
     return x[2];
 }
 
-void sort_D(Dataset D, double r, double distance)
+void sort_D(Dataset D, Eigen::MatrixXd  r, double distance)
 {
-    return list(sorted(map(calculate_distance_to(r, distance), D), key = sort_based_on_distance));
+    std::ranges::sort(D,[r](Eigen::MatrixXd ){ calculate_distance_to(r, distance);  });
+    return list(sorted(std::ranges::transform(D, calculate_distance_to(r, distance)), key = sort_based_on_distance));
 }
 
 void eps_neighborhood(std::vector<Eigen::MatrixXd> D, int m, double eps)
@@ -50,12 +49,12 @@ void eps_neighborhood(std::vector<Eigen::MatrixXd> D, int m, double eps)
         D_copy.remove(p_value);
         auto D_sorted = sort_D(D_copy, p_value[1], distance);
         time_to_calc_all_ref += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_now);
-        out_list.append([ p, list(filter([&eps](x){return x[2] <= eps;}, D_sorted)),len(D_copy),p_value[1] ])
+        out_list.append([ p, list(std::ranges::views::filter(D_sorted,[&eps](auto x){return x[2] <= eps;})),len(D_copy),p_value[1] ]);
     }
     return out_list, time_to_calc_all_ref;
 }
 
-void ti_backward_nieghborhood(D, p, p_dist, double eps, distance)
+void ti_backward_nieghborhood(Dataset D, Eigen::MatrixXd p, double p_dist, double eps,std::function<double(double,double)> distance)
 {
     seeds = [];
     backward_threshold = p_dist - eps;
@@ -80,7 +79,7 @@ void ti_backward_nieghborhood(D, p, p_dist, double eps, distance)
     return seeds, dist_cal;
 }
 
-void ti_forward_neighborhood(D, p, p_dist, double eps, distance)
+void ti_forward_neighborhood(D,Eigen::MatrixXd p, double p_dist, double eps,std::function<double(double,double)> distance)
 {
     seeds = [];
     forward_threshold = eps + p_dist;
@@ -106,7 +105,7 @@ void ti_forward_neighborhood(D, p, p_dist, double eps, distance)
     return seeds, dist_cal;
 }
 
-void ti_neighborhood(D_sorted, p, double eps, distance)
+void ti_neighborhood(Dataset D_sorted,Eigen::MatrixXd p, double eps,std::function<double(double,double)> distance)
 {
     auto p_index = list(map(lambda x : x[0], D_sorted)).index(p);
     auto p_dist = D_sorted[p_index][2];
@@ -120,17 +119,17 @@ void ti_neighborhood(D_sorted, p, double eps, distance)
            D_sorted[p_index][1]
 }
 
-void eps_ti_neighborhood(D, r, m, eps)
+void eps_ti_neighborhood(Dataset D, double r, int m, double eps)
 {
-    distance = minkosky_distance(m);
+    auto distance = minkosky_distance(m);
 
-    time_now = time.time_ns();
+    auto time_now = std::chrono::steady_clock::now();
     D_sorted = sort_D(D, r, distance);
     time_to_calc_all_ref = time.time_ns() - time_now;
 
     out_list = [];
 
-    nr_of_dist_cal = len(D);
+    auto nr_of_dist_cal = len(D);
 
     for (auto p : list(map(lambda x : x[0], D_sorted)))
     {
@@ -274,7 +273,7 @@ void datafile_and_transform(std::filesystem::path filename)
     return data[0], data [1:];
 }
 
-void determine_min_and_max_values_for_each_dimension(D)
+void determine_min_and_max_values_for_each_dimension(Dataset D)
 {
     min_values = D[0][1].copy();
     max_values = D[0][1].copy();
