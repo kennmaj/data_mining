@@ -7,14 +7,12 @@ import csv
 def minkosky_distance(m):
     def distance(p, q):
         return np.linalg.norm(np.array(p) - np.array(q), ord=m)
-
     return distance
 
 
 def calculate_distance_to(r, distance_fun):
     def map_function(q):
         return [*q, distance_fun(q[1], r)]
-
     return map_function
 
 
@@ -32,9 +30,19 @@ def eps_neighborhood(D, m, eps):
 
     out_list = []
 
-    time_to_calc_all_ref = 0
+    time_in_for_loop = time.time()
 
-    for p in ids:
+    time_to_calc_all_ref = 0
+    last_time_velocity = 0
+    i = 0
+
+    for p in ids :
+        i += 1
+        if i % 100 == 0 :
+            last_time_velocity_now = time.time() - time_in_for_loop
+            print(f"it: {i} time: {last_time_velocity_now:.01f} velocity: {100/(last_time_velocity_now - last_time_velocity):.01f}")
+            last_time_velocity = last_time_velocity_now
+
         p_value = D[ids.index(p)]
 
         time_now = time.time_ns()
@@ -104,11 +112,25 @@ def eps_ti_neighborhood(D, r, m, eps):
 
     out_list = []
 
-    nr_of_dist_cal = len(D)
+    base_nr_of_dist_cal = len(D_sorted)
 
-    for p in list(map(lambda x: x[0], D_sorted)):
+    i = 0
+
+    out_list.append(["R-POINT", [], base_nr_of_dist_cal, r])#+ nr_of_dist_cal_for_p, p_dim])
+
+    time_in_for_loop = time.time()
+    last_time_velocity = 0
+
+    for p in list(map(lambda x : x[0], D_sorted)):
+        i += 1
+        if i % 100 == 0 :
+            last_time_velocity_now = time.time() - time_in_for_loop
+            print(f"it: {i} time: {last_time_velocity_now:.01f} velocity: {100/(last_time_velocity_now - last_time_velocity):.01f}")
+            last_time_velocity = last_time_velocity_now
+
         out_set, nr_of_dist_cal_for_p, p_dim = ti_neighborhood(D_sorted.copy(), p, eps, distance)
-        out_list.append([p, out_set, nr_of_dist_cal + nr_of_dist_cal_for_p, p_dim])
+
+        out_list.append([p, out_set, nr_of_dist_cal_for_p, p_dim ])
 
     return out_list, time_to_calc_all_ref
 
@@ -132,9 +154,11 @@ def prepare_alg_out(out_list):
     return alg_out
 
 
+
 def print_to_file(algorithm_type, file_parameters, alg_paremteters, alg_out, time_out):
-    out_file_path = f"out_data/{file_parameters['fname']}/OUT_{algorithm_type}_{file_parameters['fname']}_D{len(file_parameters['dimensions'])}_R{file_parameters['rows']}_m{alg_paremteters['m']}_Eps{alg_paremteters['Eps']}.csv"
-    stat_file_path = f"out_data/{file_parameters['fname']}/STAT_{algorithm_type}_{file_parameters['fname']}_D{len(file_parameters['dimensions'])}_R{file_parameters['rows']}_m{alg_paremteters['m']}_Eps{alg_paremteters['Eps']}.csv"
+
+    out_file_path = f"out_data/{file_parameters['fname']}/OUT_{algorithm_type}_{file_parameters['fname']}_D{len(file_parameters['dimensions'])}_R{file_parameters['rows']}_m{alg_paremteters['m']}_Eps{alg_paremteters['Eps']}_r{alg_paremteters['rval']}.csv"
+    stat_file_path = f"out_data/{file_parameters['fname']}/STAT_{algorithm_type}_{file_parameters['fname']}_D{len(file_parameters['dimensions'])}_R{file_parameters['rows']}_m{alg_paremteters['m']}_Eps{alg_paremteters['Eps']}_r{alg_paremteters['rval']}.csv"
 
     with open(out_file_path, mode='w', newline='\n') as file:
         writer = csv.writer(file)
@@ -163,22 +187,23 @@ def print_to_file(algorithm_type, file_parameters, alg_paremteters, alg_out, tim
             "reference_vector_1",
             "reading_the_input_file",
             "determining_min_and_max_values_for_each_dimension",
-            "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors"
+            "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors",
             "total_time",
-            "#_of_distance_calculations_between_points_in_the_input_file_and_reference_vectors"
+            "#_of_distance_calculations_between_points_in_the_input_file_and_reference_vectors",
             "least_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
             "greatest_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
             "avg_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
             "variance_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
-            "least_cardinalities_of_determined_Eps-neighbourhoods"
-            "greatest_cardinalities_of_determined_Eps-neighbourhoods"
-            "avg_cardinalities_of_determined_Eps-neighbourhoods"
+            "least_cardinalities_of_determined_Eps-neighbourhoods",
+            "greatest_cardinalities_of_determined_Eps-neighbourhoods",
+            "avg_cardinalities_of_determined_Eps-neighbourhoods",
             "variance_cardinalities_of_determined_Eps-neighbourhoods"
         ])
 
-        dist_lst = [val[3] for val in alg_out]
-        card_lst = [val[3] for val in alg_out]
+        dist_lst = [val[len(file_parameters['dimensions']) + 1] for val in alg_out]
+        card_lst = [val[len(file_parameters['dimensions']) + 2] for val in alg_out]
 
+        
         writer.writerow([
             file_parameters['fname'],
             len(file_parameters['dimensions']),
@@ -246,86 +271,157 @@ def determine_min_and_max_values_for_each_dimension(D):
     return min_values, max_values
 
 
-input_fname = "iris_modified"
 
-input_filepath = f"input_data/data/{input_fname}.csv"
+def run_test_case(input_fname, rval, m, Epsval):
+    input_filepath = f"input_data/data/{input_fname}.csv"
 
-time_now = time.time_ns()
-file_column_name, D = datafile_and_transform(input_filepath)
+    time_now = time.time_ns()
+    file_column_name, D = datafile_and_transform(input_filepath)
 
-reading_the_input_file = time.time_ns() - time_now
+    reading_the_input_file = time.time_ns() - time_now
 
-time_now = time.time_ns()
+    time_now = time.time_ns()
 
-min_values_for_all_dimensions, max_values_for_all_dimensions = determine_min_and_max_values_for_each_dimension(D)
-determining_min_and_max_values_for_each_dimension = time.time_ns() - time_now
+    min_values_for_all_dimensions, max_values_for_all_dimensions = determine_min_and_max_values_for_each_dimension(D)
+    determining_min_and_max_values_for_each_dimension = time.time_ns() - time_now
 
-file_parameters = {
-    "fname": input_fname,
-    "dimensions": file_column_name[1],
-    "rows": len(D),
-    "min_values_for_all_dimensions": min_values_for_all_dimensions,
-    "max_values_for_all_dimensions": max_values_for_all_dimensions
-}
+    file_parameters = {
+        "fname" : input_fname,
+        "dimensions" : file_column_name[1],
+        "rows" : len(D),
+        "min_values_for_all_dimensions" : min_values_for_all_dimensions,
+        "max_values_for_all_dimensions" : max_values_for_all_dimensions
+    }
 
-alg_paremteters = {
-    "r": [0, 0],
-    "m": 2,
-    "Eps": 1.5
-}
 
-r = [0, 0]
+
+    if rval == "max":
+        r = max_values_for_all_dimensions
+    elif rval == "min":
+        r = min_values_for_all_dimensions
+    elif rval == "0":
+        r = np.zeros(len(max_values_for_all_dimensions))
+    else:
+        r = rval
+
+    distance = minkosky_distance(m)
+
+    if type(Epsval) == str:
+        Eps = round(distance(max_values_for_all_dimensions, min_values_for_all_dimensions)/int(Epsval), 1)
+    else :
+        Eps = Epsval
+
+
+    print(f"rval: {rval}, m: {m}, Eps: {Eps}, Epsval: {Epsval}")
+
+    alg_paremteters = {
+        "r" : r,
+        "m" : m,
+        "Eps" : Eps,
+        "rval" : rval
+    }
+
+    print("EPS-TI-NB")
+
+    time_now = time.time_ns()
+    out_list, time_to_calc_all_ref  = eps_ti_neighborhood(D.copy(), r, m, eps = Eps)
+    total_time = time.time_ns() - time_now
+
+    alg_out = prepare_alg_out(
+        out_list = out_list
+    )
+
+    time_out = {
+        "reading_the_input_file" : reading_the_input_file,
+        "determining_min_and_max_values_for_each_dimension" : determining_min_and_max_values_for_each_dimension,
+        "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors" : time_to_calc_all_ref,
+        "total_time" : total_time
+    }
+
+    print_to_file(
+        algorithm_type = "TI-EPS-NB",
+        file_parameters = file_parameters,
+        alg_paremteters= alg_paremteters,
+        alg_out = alg_out,
+        time_out = time_out
+    )
+
+    print("EPS-NB")
+
+    time_now = time.time_ns()
+
+    out_list, time_to_calc_all_ref = eps_neighborhood(D.copy(), m, eps = Eps)
+
+    total_time = time.time_ns() - time_now
+
+    alg_out = prepare_alg_out(
+        out_list = out_list
+    )
+
+    time_out = {
+        "reading_the_input_file" : reading_the_input_file,
+        "determining_min_and_max_values_for_each_dimension" : determining_min_and_max_values_for_each_dimension,
+        "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors" : time_to_calc_all_ref,
+        "total_time" : total_time
+    }
+
+    print_to_file(
+        algorithm_type = "EPS-NB",
+        file_parameters = file_parameters,
+        alg_paremteters= alg_paremteters,
+        alg_out = alg_out,
+        time_out = time_out
+    )
+
+
+
+
+
+#input_fname = "toy_dataset"
+input_fname = "wine_quality" # 15 25 35
+#input_fname = "2d_elastodynamic_metamaterials" # 35
+#input_fname = "dry_bean_dataset" # 35
+
+r = "max"
 m = 2
-eps = 1.5
+eps = "40"
 
-print("EPS-NB")
+for ipfl in ["wine_quality", "2d_elastodynamic_metamaterials", "2d_elastodynamic_metamaterials"]:
 
-time_now = time.time_ns()
 
-out_list, time_to_calc_all_ref = eps_neighborhood(D.copy(), m, eps=eps)
+    m = 2
+    eps = "50"
+    r = "0"
+    run_test_case(input_fname, r, m, eps)
 
-total_time = time.time_ns() - time_now
 
-alg_out = prepare_alg_out(
-    out_list=out_list
-)
 
-time_out = {
-    "reading_the_input_file": reading_the_input_file,
-    "determining_min_and_max_values_for_each_dimension": determining_min_and_max_values_for_each_dimension,
-    "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors": time_to_calc_all_ref,
-    "total_time": total_time
-}
 
-print_to_file(
-    algorithm_type="EPS-NB",
-    file_parameters=file_parameters,
-    alg_paremteters=alg_paremteters,
-    alg_out=alg_out,
-    time_out=time_out
-)
+    r = "max"
+    run_test_case(input_fname, r, m, eps)
 
-print("EPS-TI-NB")
+    r = "min"
+    run_test_case(input_fname, r, m, eps)
 
-time_now = time.time_ns()
-out_list, time_to_calc_all_ref = eps_ti_neighborhood(D.copy(), r, m, eps=eps)
-total_time = time.time_ns() - time_now
 
-alg_out = prepare_alg_out(
-    out_list=out_list
-)
 
-time_out = {
-    "reading_the_input_file": reading_the_input_file,
-    "determining_min_and_max_values_for_each_dimension": determining_min_and_max_values_for_each_dimension,
-    "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors": time_to_calc_all_ref,
-    "total_time": total_time
-}
+    r = "0"
+    eps = "45"
+    run_test_case(input_fname, r, m, eps)
 
-print_to_file(
-    algorithm_type="EPS-TI-NB",
-    file_parameters=file_parameters,
-    alg_paremteters=alg_paremteters,
-    alg_out=alg_out,
-    time_out=time_out
-)
+    eps = "55"
+    run_test_case(input_fname, r, m, eps)
+
+
+
+
+
+    eps = "50"
+    m = 1
+    run_test_case(input_fname, r, m, eps)
+
+    m = 3
+    run_test_case(input_fname, r, m, eps)
+
+
+
