@@ -370,12 +370,50 @@ def run_test_case(input_fname, rval, m, Epsval):
 
 
 #input_fname = "toy_dataset"
-#input_fname = "wine_quality" 15 25 35
-input_fname = "2d_elastodynamic_metamaterials"
+input_fname = "wine_quality" # 15 25 35
+#input_fname = "2d_elastodynamic_metamaterials" # 35
+#input_fname = "dry_bean_dataset" # 35 
+    
 r = "max"
 m = 2
-eps = "35"
+eps = "40"
+
+for ipfl in ["wine_quality", "2d_elastodynamic_metamaterials", "2d_elastodynamic_metamaterials"]:
+
+    
+    m = 2
+    eps = "50"
+    r = "0"
+    run_test_case(input_fname, r, m, eps)
 
 
-run_test_case(input_fname, r, m, eps)
+    
+
+    r = "max"
+    run_test_case(input_fname, r, m, eps)
+
+    r = "min"
+    run_test_case(input_fname, r, m, eps)
+
+
+
+    r = "0"
+    eps = "45"
+    run_test_case(input_fname, r, m, eps)
+
+    eps = "55"
+    run_test_case(input_fname, r, m, eps)
+
+
+
+
+
+    eps = "50"
+    m = 1
+    run_test_case(input_fname, r, m, eps)
+
+    m = 3
+    run_test_case(input_fname, r, m, eps)
+
+
 
