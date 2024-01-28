@@ -318,7 +318,7 @@ void print_to_file(std::string algorithm_type,
         file << fmt::format(
             "{},{},{},{},{}\n",
             val.reference.id,
-            val.reference.values,
+            fmt::join(val.reference.values,","),
             val.number_of_distance_computations,
             val.data.size(),
             fmt::join(val.data | transform([](auto x) { return x.point.id; }), ","));
@@ -408,18 +408,24 @@ struct CSVInput
 CSVInput datafile_and_transform(const std::filesystem::path &filename)
 {
     std::fstream file{filename};
-    std::string line;
     Dataset d;
+    std::string line;
+    std::getline(file, line);
+    std::vector<std::string> tokenized;
+    boost::algorithm::split(tokenized,line,boost::is_any_of(","));
     std::string header;
-    std::getline(file, header);
+    for(const auto& token : tokenized | drop(1))
+    {
+        header += fmt::format("v{}",token);
+    }
     while (file.good())
     {
+        std::string line;
         std::getline(file, line);
         if(line.empty())
         {
             break;
         }
-        std::vector<std::string> tokenized;
         boost::algorithm::split(tokenized,line,boost::is_any_of(","));
 //        boost::algorithm::split_regex(tokenized, line, boost::regex( ", " ) ) ;
         Point p;
