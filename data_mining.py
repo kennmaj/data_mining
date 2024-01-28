@@ -26,9 +26,20 @@ def eps_neighborhood(D, m, eps):
 
     out_list = []
 
+    time_in_for_loop = time.time()
+
     time_to_calc_all_ref = 0
+    last_time_velocity = 0
+    i = 0
 
     for p in ids :
+
+        i += 1
+        if i % 100 == 0 : 
+            last_time_velocity_now = time.time() - time_in_for_loop
+            print(f"it: {i} time: {last_time_velocity_now} velocity: {100/(last_time_velocity_now - last_time_velocity)}")
+            last_time_velocity = last_time_velocity_now
+        
         p_value = D[ids.index(p)]
 
         time_now = time.time_ns()
@@ -97,11 +108,16 @@ def eps_ti_neighborhood(D, r, m, eps):
 
     out_list = []
 
-    nr_of_dist_cal = len(D)
+    base_nr_of_dist_cal = len(D_sorted)
+
+    i = 0
+
+    out_list.append(["R-POINT", [], base_nr_of_dist_cal, r])#+ nr_of_dist_cal_for_p, p_dim])
 
     for p in list(map(lambda x : x[0], D_sorted)):
         out_set, nr_of_dist_cal_for_p, p_dim = ti_neighborhood(D_sorted.copy(), p, eps, distance)
-        out_list.append([p, out_set, nr_of_dist_cal + nr_of_dist_cal_for_p, p_dim])
+
+        out_list.append([p, out_set, nr_of_dist_cal_for_p, p_dim ])
 
     return out_list, time_to_calc_all_ref
 
@@ -156,16 +172,16 @@ def print_to_file(algorithm_type, file_parameters, alg_paremteters, alg_out, tim
             "reference_vector_1",
             "reading_the_input_file",
             "determining_min_and_max_values_for_each_dimension",
-            "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors"
+            "time_calculating_distances_from_each_point_in_the_input_file_to_all_reference_vectors",
             "total_time", 
-            "#_of_distance_calculations_between_points_in_the_input_file_and_reference_vectors"
+            "#_of_distance_calculations_between_points_in_the_input_file_and_reference_vectors",
             "least_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
             "greatest_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
             "avg_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
             "variance_#_of_distance_calculations_carried_out_to_find_Eps-neigbourhood_of_a_point",
-            "least_cardinalities_of_determined_Eps-neighbourhoods"
-            "greatest_cardinalities_of_determined_Eps-neighbourhoods"
-            "avg_cardinalities_of_determined_Eps-neighbourhoods"
+            "least_cardinalities_of_determined_Eps-neighbourhoods",
+            "greatest_cardinalities_of_determined_Eps-neighbourhoods",
+            "avg_cardinalities_of_determined_Eps-neighbourhoods",
             "variance_cardinalities_of_determined_Eps-neighbourhoods"
         ])
 
@@ -202,7 +218,6 @@ def print_to_file(algorithm_type, file_parameters, alg_paremteters, alg_out, tim
             np.var(card_lst)
 
         ])
-
 
 
 # D = [

@@ -5,4 +5,4 @@ data_white = pd.read_csv("input_data/original/wine+quality/winequality-white.csv
 
 data = pd.concat([data_red, data_white], ignore_index=True)
 data.index.name = 'ID'
-data.to_csv("input_data/data/winequality_modified.csv")
+data.to_csv("input_data/data/wine_quality.csv")
