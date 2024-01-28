@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(range-v3 CONFIG REQUIRED)
-
+find_package(Boost CONFIG REQUIRED)
 #add_subdirectory(sources)
 #add_subdirectory(applications)
 
@@ -16,4 +16,6 @@ target_link_libraries(data_mining PRIVATE
         Eigen3::Eigen
         fmt::fmt
         range-v3::range-v3
+        Boost::regex
+        Boost::boost
 )

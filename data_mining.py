@@ -246,7 +246,7 @@ def determine_min_and_max_values_for_each_dimension(D):
     return min_values, max_values
 
 
-input_fname = "toy_dataset"
+input_fname = "iris_modified"
 
 input_filepath = f"input_data/data/{input_fname}.csv"
 
