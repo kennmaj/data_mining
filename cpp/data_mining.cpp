@@ -271,6 +271,7 @@ struct AlgParameters
     Point r;
     int order;
     double eps;
+    std::string rval;
 };
 
 void print_to_file(std::string algorithm_type,
@@ -287,13 +288,13 @@ void print_to_file(std::string algorithm_type,
                                      file_parameters["rows"],
                                      alg_parameters.order,
                                      alg_parameters.eps);
-//    auto out_file_path = fmt::format("OUT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
-//                                     algorithm_type,
-//                                     file_parameters["fname"],
-//                                     file_parameters["dimensions"],
-//                                     file_parameters["rows"],
-//                                     alg_parameters.order,
-//                                     alg_parameters.eps);
+    //    auto out_file_path = fmt::format("OUT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
+    //                                     algorithm_type,
+    //                                     file_parameters["fname"],
+    //                                     file_parameters["dimensions"],
+    //                                     file_parameters["rows"],
+    //                                     alg_parameters.order,
+    //                                     alg_parameters.eps);
 
     auto stat_file_path = fmt::format("out_data/{}/STAT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
                                       file_parameters["fname"],
@@ -303,13 +304,13 @@ void print_to_file(std::string algorithm_type,
                                       file_parameters["rows"],
                                       alg_parameters.order,
                                       alg_parameters.eps);
-//    auto stat_file_path = fmt::format("STAT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
-//                                      algorithm_type,
-//                                      file_parameters["fname"],
-//                                      file_parameters["dimensions"],
-//                                      file_parameters["rows"],
-//                                      alg_parameters.order,
-//                                      alg_parameters.eps);
+    //    auto stat_file_path = fmt::format("STAT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
+    //                                      algorithm_type,
+    //                                      file_parameters["fname"],
+    //                                      file_parameters["dimensions"],
+    //                                      file_parameters["rows"],
+    //                                      alg_parameters.order,
+    //                                      alg_parameters.eps);
     std::ofstream file{out_file_path};
     file << fmt::format("point_id,{},#_of_distance_calculations,|N_Eps|,ids_of_points_in_N_Eps\n",
                         file_parameters["dimensions"]);
@@ -318,7 +319,7 @@ void print_to_file(std::string algorithm_type,
         file << fmt::format(
             "{},{},{},{},{}\n",
             val.reference.id,
-            fmt::join(val.reference.values,","),
+            fmt::join(val.reference.values, ","),
             val.number_of_distance_computations,
             val.data.size(),
             fmt::join(val.data | transform([](auto x) { return x.point.id; }), ","));
@@ -412,22 +413,22 @@ CSVInput datafile_and_transform(const std::filesystem::path &filename)
     std::string line;
     std::getline(file, line);
     std::vector<std::string> tokenized;
-    boost::algorithm::split(tokenized,line,boost::is_any_of(","));
+    boost::algorithm::split(tokenized, line, boost::is_any_of(","));
     std::string header;
-    for(const auto& token : tokenized | drop(1))
+    for (const auto &token : tokenized | drop(1))
     {
-        header += fmt::format("v{}",token);
+        header += fmt::format("v{},", token);
     }
     while (file.good())
     {
         std::string line;
         std::getline(file, line);
-        if(line.empty())
+        if (line.empty())
         {
             break;
         }
-        boost::algorithm::split(tokenized,line,boost::is_any_of(","));
-//        boost::algorithm::split_regex(tokenized, line, boost::regex( ", " ) ) ;
+        boost::algorithm::split(tokenized, line, boost::is_any_of(","));
+        //        boost::algorithm::split_regex(tokenized, line, boost::regex( ", " ) ) ;
         Point p;
         p.values = tokenized | drop(1) |
                    transform(
@@ -479,10 +480,10 @@ MinMax determine_min_and_max_values_for_each_dimension(Dataset D)
     return {.min_values = min_values, .max_values = max_values};
 }
 
-int main()
+void run_test_case(std::string input_fname, std::string rval, int m, double Epsval)
 {
-    auto input_fname = std::string{"iris_modified"};
-    auto input_filepath = fmt::format("input_data/data/{}.csv", input_fname);
+    auto input_filepath = fmt::format("input_data/data/{}.csv",input_fname);
+
     auto time_now = steady_clock::now();
     auto [file_column_name, D] = datafile_and_transform(input_filepath);
     auto reading_the_input_file = duration_cast<milliseconds>(steady_clock::now() - time_now);
@@ -495,51 +496,100 @@ int main()
     auto file_parameters = std::map<std::string_view, std::string>{
         {"fname", input_fname},
         {"dimensions", file_column_name},
-        {"rows", fmt::format("{}",D.data.size())},
-        {"min_values_for_all_dimensions", fmt::format("{}",fmt::join(min_values_for_all_dimensions.values,","))},
-        {"max_values_for_all_dimensions", fmt::format("{}",fmt::join(max_values_for_all_dimensions.values,","))}};
+        {"rows", fmt::format("{}", D.data.size())},
+        {"min_values_for_all_dimensions",
+         fmt::format("{}", fmt::join(min_values_for_all_dimensions.values, ","))},
+        {"max_values_for_all_dimensions",
+         fmt::format("{}", fmt::join(max_values_for_all_dimensions.values, ","))}};
 
-    auto alg_paremteters = AlgParameters{.r = {.values{0.0}}, .order = 2, .eps = 1.5};
+    Point r;
+    if (rval == "max")
+    {
+        r = max_values_for_all_dimensions;
+    }
+    else if (rval == "min")
+    {
+        r = min_values_for_all_dimensions;
+    }
+    else if (rval == "0")
+    {
+        r.values.resize(max_values_for_all_dimensions.values.size(), 0.0);
+    }
+    double Eps =
+        max_values_for_all_dimensions.minkowskiDistanceTo(min_values_for_all_dimensions, 2) /
+        Epsval;
 
-    auto r = Point{.values{0.0, 0.0}};
-    auto m = 2;
-    auto eps = 1.5;
+    fmt::println("rval: {}, m: {}, Eps: {}, Epsval: {}", rval, m, Eps, Epsval);
 
-    fmt::println("EPS-NB");
-
-    time_now = steady_clock::now();
-
-    auto [out_list, time_to_calc_all_ref] = eps_neighborhood(D, m, eps = eps);
-
-    auto total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
-
-    //    auto alg_out = prepare_alg_out(out_list);
-    auto time_out = std::map<std::string_view, milliseconds>{
-        {"reading_the_input_file", reading_the_input_file},
-        {"determining_min_and_max_values_for_each_dimension",
-         determining_min_and_max_values_for_each_dimension},
-        {"time_calculating_distances_from_each_point_in_the_input_file_to_all_"
-         "reference_vectors",
-         time_to_calc_all_ref},
-        {"total_time", total_time}};
-    print_to_file("EPS-NB", file_parameters, alg_paremteters, out_list, time_out);
+    auto alg_paremteters = AlgParameters{.r = r, .order = m, .eps = Eps, .rval = rval};
 
     fmt::println("EPS-TI-NB");
 
     time_now = steady_clock::now();
-    auto [eps_ti_out_list, eps_ti_time_to_calc_all_ref] = eps_ti_neighborhood(D, r, m, eps = eps);
-    total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
+    auto [eps_ti_out_list, ti_time_to_calc_all_ref] = eps_ti_neighborhood(D, r, m, Eps);
+    auto total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
 
-    //        alg_out = prepare_alg_out(out_list);
-
-    time_out = std::map<std::string_view, milliseconds>{
+    // alg_out = prepare_alg_out(out_list = out_list)
+    auto time_out = std::map<std::string_view, milliseconds>{
         {"reading_the_input_file", reading_the_input_file},
         {"determining_min_and_max_values_for_each_dimension",
          determining_min_and_max_values_for_each_dimension},
         {"time_calculating_distances_from_each_point_in_the_input_file_"
          "to_all_reference_vectors",
-         time_to_calc_all_ref},
+         ti_time_to_calc_all_ref},
         {"total_time", total_time}};
 
-    print_to_file("EPS-TI-NB", file_parameters, alg_paremteters, out_list, time_out);
+    print_to_file("EPS-TI-NB", file_parameters, alg_paremteters, eps_ti_out_list, time_out);
+
+    fmt::println("EPS-NB");
+
+    time_now = steady_clock::now();
+
+    auto [out_list, time_to_calc_all_ref] = eps_neighborhood(D, m, Eps);
+
+    total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
+
+    file_parameters = std::map<std::string_view, std::string>{
+        {"fname", input_fname},
+        {"dimensions", file_column_name},
+        {"rows", fmt::format("{}", D.data.size())},
+        {"min_values_for_all_dimensions",
+         fmt::format("{}", fmt::join(min_values_for_all_dimensions.values, ","))},
+        {"max_values_for_all_dimensions",
+         fmt::format("{}", fmt::join(max_values_for_all_dimensions.values, ","))}};
+    print_to_file("EPS-NB", file_parameters, alg_paremteters, out_list, time_out);
+}
+
+int main()
+{
+    //    auto input_fname = std::string{"toy_dataset"};
+    //    input_fname = "wine_quality" # 15 25 35
+    //    input_fname = "2d_elastodynamic_metamaterials" # 35
+    //    input_fname = "dry_bean_dataset" # 35
+
+    auto r = std::string{"max"};
+    auto m = 2;
+    auto eps = 40;
+
+    for (auto input_fname : {"wine_quality"s })
+    {
+        m = 2;
+        eps = 50;
+        r = "0";
+        run_test_case(input_fname, r, m, eps);
+        r = "max";
+        run_test_case(input_fname, r, m, eps);
+        r = "min";
+        run_test_case(input_fname, r, m, eps);
+        r = "0";
+        eps = 45;
+        run_test_case(input_fname, r, m, eps);
+        eps = 55;
+        run_test_case(input_fname, r, m, eps);
+        eps = 50;
+        m = 1;
+        run_test_case(input_fname, r, m, eps);
+        m = 3;
+        run_test_case(input_fname, r, m, eps);
+    }
 }
