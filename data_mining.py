@@ -304,11 +304,11 @@ def run_test_case(input_fname, rval, m, Epsval):
     else:
         r = rval
 
-    distance = minkosky_distance(m)
+     
 
     if type(Epsval) == str:
-        Eps = round(distance(max_values_for_all_dimensions, min_values_for_all_dimensions)/int(Epsval), 1)
-    else :
+        Eps = round(minkosky_distance(2)(max_values_for_all_dimensions, min_values_for_all_dimensions)/int(Epsval), 1)
+    else : 
         Eps = Epsval
 
 
@@ -386,7 +386,7 @@ r = "max"
 m = 2
 eps = "40"
 
-for ipfl in ["wine_quality", "2d_elastodynamic_metamaterials", "2d_elastodynamic_metamaterials"]:
+for input_fname in ["dry_bean_dataset", "2d_elastodynamic_metamaterials"]:
 
 
     m = 2
