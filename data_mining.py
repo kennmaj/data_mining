@@ -399,7 +399,7 @@ def run_test_cases():
     
 m = 2
 r = "0"
-eps = "50"
+eps = 1.5
 #input_fname = "wine_quality" 
 #input_fname = "2d_elastodynamic_metamaterials" 
 #input_fname = "dry_bean_dataset"
