@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import time
 import csv
 
@@ -365,55 +364,49 @@ def run_test_case(input_fname, rval, m, Epsval):
         time_out = time_out
     )
 
+
+def run_test_cases():
+    for f in ["wine_quality", "dry_bean_dataset", "2d_elastodynamic_metamaterials"]:
+
+        m = 2
+        eps = "50"
+        r = "0"
+        run_test_case(input_fname, r, m, eps)
+
+
+        r = "max"
+        run_test_case(input_fname, r, m, eps)
+
+        r = "min"
+        run_test_case(input_fname, r, m, eps)
+
+        r = "0"
+        eps = "45"
+        run_test_case(input_fname, r, m, eps)
+
+        eps = "55"
+        run_test_case(input_fname, r, m, eps)
+
+
+        eps = "50"
+        m = 1
+        run_test_case(input_fname, r, m, eps)
+
+        m = 3
+        run_test_case(input_fname, r, m, eps)
+
+
     
-
-
-
-#input_fname = "toy_dataset"
-input_fname = "wine_quality" # 15 25 35
-#input_fname = "2d_elastodynamic_metamaterials" # 35
-#input_fname = "dry_bean_dataset" # 35 
-    
-r = "max"
 m = 2
-eps = "40"
-
-for input_fname in ["dry_bean_dataset", "2d_elastodynamic_metamaterials"]:
+r = "0"
+eps = 1.5
+#input_fname = "wine_quality" 
+#input_fname = "2d_elastodynamic_metamaterials" 
+#input_fname = "dry_bean_dataset"
+input_fname = "toy_dataset"
+run_test_case(input_fname = input_fname, rval = r, m = m, Epsval = eps)
 
     
-    m = 2
-    eps = "50"
-    r = "0"
-    run_test_case(input_fname, r, m, eps)
-
-
-
-
-    r = "max"
-    run_test_case(input_fname, r, m, eps)
-
-    r = "min"
-    run_test_case(input_fname, r, m, eps)
-
-
-
-    r = "0"
-    eps = "45"
-    run_test_case(input_fname, r, m, eps)
-
-    eps = "55"
-    run_test_case(input_fname, r, m, eps)
-
-
-
-
-
-    eps = "50"
-    m = 1
-    run_test_case(input_fname, r, m, eps)
-
-    m = 3
-    run_test_case(input_fname, r, m, eps)
 
 
 
