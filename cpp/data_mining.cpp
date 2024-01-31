@@ -241,7 +241,7 @@ void print_to_file(std::string algorithm_type,
                    std::vector<Neighborhood> alg_out,
                    std::map<std::string_view, milliseconds> time_out)
 {
-    auto out_file_path = fmt::format("out_data/{}/OUT_{}_{}_D{}_R{}_m{}_Eps{:.1f}_r{}-cpp.csv",
+    auto out_file_path = fmt::format("out_data/{}/OUT_{}_{}_D{}_R{}_m{}_Eps{:.2f}_r{}-cpp.csv",
                                      file_parameters["fname"],
                                      algorithm_type,
                                      file_parameters["fname"],
@@ -250,7 +250,7 @@ void print_to_file(std::string algorithm_type,
                                      alg_parameters.order,
                                      alg_parameters.eps,
                                      alg_parameters.rval);
-    auto stat_file_path = fmt::format("out_data/{}/STAT_{}_{}_D{}_R{}_m{}_Eps{:.1f}_r{}-cpp.csv",
+    auto stat_file_path = fmt::format("out_data/{}/STAT_{}_{}_D{}_R{}_m{}_Eps{:.2f}_r{}-cpp.csv",
                                       file_parameters["fname"],
                                       algorithm_type,
                                       file_parameters["fname"],
@@ -418,8 +418,10 @@ MinMax determine_min_and_max_values_for_each_dimension(Dataset D)
     }
     return {.min_values = min_values, .max_values = max_values};
 }
-
-void run_test_case(std::string input_fname, std::string rval, int m, double eps)
+// helper type for the visitor #4
+template<class... Ts>
+struct Overload : Ts... { using Ts::operator()...; };
+void run_test_case(std::string input_fname, std::string rval, int m, std::variant<double,std::string> eps)
 {
     auto input_filepath = fmt::format("input_data/data/{}.csv",input_fname);
 
@@ -460,14 +462,20 @@ void run_test_case(std::string input_fname, std::string rval, int m, double eps)
         r.values.resize(max_values_for_all_dimensions.values.size(), 0.0);
     }
 
-    fmt::println("rval: {}, m: {}, Eps: {}", rval, m, eps);
+    double epsval = std::visit(
+        Overload{[&max_values_for_all_dimensions, &min_values_for_all_dimensions](std::string s){
+                                              double pom = std::stod(s);
+                                              return max_values_for_all_dimensions.minkowskiDistanceTo(min_values_for_all_dimensions,2)/pom;
 
-    auto alg_paremteters = AlgParameters{.r = r, .order = m, .eps = eps, .rval = rval};
+                                          },[](double s){ return s;}},eps);
+    fmt::println("rval: {}, m: {}, Eps: {}", rval, m, epsval);
+
+    auto alg_paremteters = AlgParameters{.r = r, .order = m, .eps = epsval, .rval = rval};
 
     fmt::println("EPS-TI-NB");
 
     time_now = steady_clock::now();
-    auto [eps_ti_out_list, ti_time_to_calc_all_ref] = eps_ti_neighborhood(D, r, m, eps);
+    auto [eps_ti_out_list, ti_time_to_calc_all_ref] = eps_ti_neighborhood(D, r, m, epsval);
     auto total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
 
     // alg_out = prepare_alg_out(out_list = out_list)
@@ -486,10 +494,18 @@ void run_test_case(std::string input_fname, std::string rval, int m, double eps)
 
     time_now = steady_clock::now();
 
-    auto [out_list, time_to_calc_all_ref] = eps_neighborhood(D, m, eps);
+    auto [out_list, time_to_calc_all_ref] = eps_neighborhood(D, m, epsval);
 
     total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
 
+    time_out = std::map<std::string_view, milliseconds>{
+        {"reading_the_input_file", reading_the_input_file},
+        {"determining_min_and_max_values_for_each_dimension",
+                                   determining_min_and_max_values_for_each_dimension},
+        {"time_calculating_distances_from_each_point_in_the_input_file_"
+         "to_all_reference_vectors",
+                                   time_to_calc_all_ref},
+        {"total_time", total_time}};
     file_parameters = std::map<std::string_view, std::string>{
         {"fname", input_fname},
         {"number_of_dimensions",fmt::format("{}",file_column_name.size()-1)},
@@ -504,37 +520,36 @@ void run_test_case(std::string input_fname, std::string rval, int m, double eps)
 
 int main()
 {
-    auto input_fname = std::string{"toy_dataset"};
+//    auto input_fname = std::string{"toy_dataset"};
 //    auto input_fname = "wine_quality";
 //      auto  input_fname = "2d_elastodynamic_metamaterials";a
     //    input_fname = "dry_bean_dataset" # 35
 
     auto r = std::string{"0"};
     auto m = 2;
-    auto eps = 1.8;
-    run_test_case(input_fname, r, m, eps);
+    auto eps = std::variant<double,std::string>{1.8};
+//    run_test_case(input_fname, r, m, eps);
 
-//    for (auto input_fname : {"dry_bean_dataset"s, "wine_quality"s })
-//    for (auto input_fname : {"toy_dataset"s, "2d_elastodynamic_metamaterials"s, "dry_bean_dataset"s, "wine_quality"s })
-//    {
-//        fmt::println("{}",input_fname);
-//        m = 2;
-//        eps = 50;
-//        r = "0";
-//        run_test_case(input_fname, r, m, eps);
-//        r = "max";
-//        run_test_case(input_fname, r, m, eps);
-//        r = "min";
-//        run_test_case(input_fname, r, m, eps);
-//        r = "0";
-//        eps = 45;
-//        run_test_case(input_fname, r, m, eps);
-//        eps = 55;
-//        run_test_case(input_fname, r, m, eps);
-//        eps = 50;
-//        m = 1;
-//        run_test_case(input_fname, r, m, eps);
-//        m = 3;
-//        run_test_case(input_fname, r, m, eps);
-//    }
+    for (auto input_fname : {"toy_dataset"s, "2d_elastodynamic_metamaterials"s, "dry_bean_dataset"s, "wine_quality"s })
+    {
+        fmt::println("{}",input_fname);
+        m = 2;
+        eps = "50";
+        r = "0";
+        run_test_case(input_fname, r, m, eps);
+        r = "max";
+        run_test_case(input_fname, r, m, eps);
+        r = "min";
+        run_test_case(input_fname, r, m, eps);
+        r = "0";
+        eps = "45";
+        run_test_case(input_fname, r, m, eps);
+        eps = "55";
+        run_test_case(input_fname, r, m, eps);
+        eps = "50";
+        m = 1;
+        run_test_case(input_fname, r, m, eps);
+        m = 3;
+        run_test_case(input_fname, r, m, eps);
+    }
 }
