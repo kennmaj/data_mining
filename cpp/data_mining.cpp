@@ -185,14 +185,14 @@ Neighborhood ti_neighborhood(SortedDataset D_sorted, Point p, double eps, double
     if (find_result == D_sorted.data.end())
         throw std::logic_error("wrong id!");
     auto p_value = find_result->point;
-    auto p_index = find_result->point.id;
-    auto p_dist = D_sorted.data[p_index].distance_to_reference;
+    auto p_index = std::distance(D_sorted.data.begin(),find_result);
+    auto p_dist = find_result->distance_to_reference;
     SortedDataset cut;
     cut.data = D_sorted.data | take(p_index) | to<std::vector>;
     cut.reference = D_sorted.reference;
     auto [backward_neighbors, dist_cal_backward] =
         ti_backward_neighborhood(cut, D_sorted.data[p_index].point, p_dist, eps, order);
-    cut.data = D_sorted.data | drop(p_index) | to<std::vector>;
+    cut.data = D_sorted.data | drop(p_index+1) | to<std::vector>;
     auto [forward_neighbors, dist_cal_forward] =
         ti_forward_neighborhood(cut, D_sorted.data[p_index].point, p_dist, eps, order);
     Neighborhood result;
@@ -227,45 +227,6 @@ NeighborhoodComputation eps_ti_neighborhood(const Dataset &D,
     return {out_list, duration_cast<milliseconds>(time_to_calc_all_ref)};
 }
 
-// void print_return(out_list)
-//{
-//     for (auto val : out_list)
-//     {
-//         fmt::print("ID: {}", val[0]);
-//         if (val[1] == [])
-//         {
-//             fmt::print("\tEMPTY");
-//             continue;
-//         }
-//         for (auto ans : val[1])
-//         {
-//             fmt::print(f "\t{}", ans);
-//         }
-//     }
-// }
-
-// struct AlgOut
-//{
-//     Point reference;
-//     std::vector<DatasetWithReference::Row> data;
-//     std::size_t number_of_computations;
-// };
-
-// std::vector<AlgOut> prepare_alg_out(NeighborhoodComputation out_list)
-//{
-//     std::vector<AlgOut> alg_out;
-//     for (auto val : out_list.neighborhoods)
-//     {
-//         alg_out.push_back(val.reference,
-//                           val.data,
-//                           val.number_of_distance_computations,
-//                           val.data.size(),
-//                           val.data |
-//                               transform([](DatasetWithReference::Row x) { return x.point.id; }));
-//     }
-//     return alg_out;
-// }
-
 struct AlgParameters
 {
     Point r;
@@ -280,49 +241,36 @@ void print_to_file(std::string algorithm_type,
                    std::vector<Neighborhood> alg_out,
                    std::map<std::string_view, milliseconds> time_out)
 {
-    auto out_file_path = fmt::format("out_data/{}/OUT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
+    auto out_file_path = fmt::format("out_data/{}/OUT_{}_{}_D{}_R{}_m{}_Eps{:.1f}_r{}-cpp.csv",
                                      file_parameters["fname"],
                                      algorithm_type,
                                      file_parameters["fname"],
-                                     file_parameters["dimensions"],
+                                     file_parameters["number_of_dimensions"],
                                      file_parameters["rows"],
                                      alg_parameters.order,
-                                     alg_parameters.eps);
-    //    auto out_file_path = fmt::format("OUT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
-    //                                     algorithm_type,
-    //                                     file_parameters["fname"],
-    //                                     file_parameters["dimensions"],
-    //                                     file_parameters["rows"],
-    //                                     alg_parameters.order,
-    //                                     alg_parameters.eps);
-
-    auto stat_file_path = fmt::format("out_data/{}/STAT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
+                                     alg_parameters.eps,
+                                     alg_parameters.rval);
+    auto stat_file_path = fmt::format("out_data/{}/STAT_{}_{}_D{}_R{}_m{}_Eps{:.1f}_r{}-cpp.csv",
                                       file_parameters["fname"],
                                       algorithm_type,
                                       file_parameters["fname"],
-                                      file_parameters["dimensions"],
+                                      file_parameters["number_of_dimensions"],
                                       file_parameters["rows"],
                                       alg_parameters.order,
-                                      alg_parameters.eps);
-    //    auto stat_file_path = fmt::format("STAT_{}_{}_D{}_R{}_m{}_Eps{}-cpp.csv",
-    //                                      algorithm_type,
-    //                                      file_parameters["fname"],
-    //                                      file_parameters["dimensions"],
-    //                                      file_parameters["rows"],
-    //                                      alg_parameters.order,
-    //                                      alg_parameters.eps);
+                                      alg_parameters.eps,
+                                      alg_parameters.rval);
     std::ofstream file{out_file_path};
-    file << fmt::format("point_id,{},#_of_distance_calculations,|N_Eps|,ids_of_points_in_N_Eps\n",
+    file << fmt::format("point_id,{}#_of_distance_calculations,|N_Eps|,ids_of_points_in_N_Eps\n",
                         file_parameters["dimensions"]);
     for (auto val : alg_out)
     {
         file << fmt::format(
             "{},{},{},{},{}\n",
             val.reference.id,
-            fmt::join(val.reference.values, ","),
+            fmt::join(val.reference.values,","),
             val.number_of_distance_computations,
             val.data.size(),
-            fmt::join(val.data | transform([](auto x) { return x.point.id; }), ","));
+            val.data | transform([](auto x) { return x.point.id; }));
     }
     std::ofstream stat_file{stat_file_path};
     // clang-format off
@@ -330,8 +278,8 @@ void print_to_file(std::string algorithm_type,
         "name_of_the_input_file,"
         "#_of_dimensions_of_a_point,"
         "#_of_points_in_the_input_file,"
-        "{},"
-        "{},"
+        "{}"
+        "{}"
         "value_of_parameter_Eps,"
         "value_of_parameter_m,the_number_of_used_reference_vectors,"
         "reference_vector_1,"
@@ -352,9 +300,9 @@ void print_to_file(std::string algorithm_type,
         file_parameters["dimensions"]);
     // clang-format on
     auto dist_lst =
-        alg_out | transform([](const auto &x) { return x.number_of_distance_computations; });
+        alg_out | transform([](const Neighborhood &x) { return x.number_of_distance_computations; });
     auto card_lst =
-        alg_out | transform([](const auto &x) { return x.number_of_distance_computations; });
+        alg_out | transform([](const Neighborhood &x) { return x.data.size(); });
 
     double avg_dist = accumulate(dist_lst, 0.0) / dist_lst.size();
     double var_dist = (accumulate(dist_lst,
@@ -362,16 +310,22 @@ void print_to_file(std::string algorithm_type,
                                   [avg_dist](auto sum, auto elem)
                                   { return sum + (elem - avg_dist) * (elem - avg_dist); }) /
                        dist_lst.size());
-    stat_file << fmt::format("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+    double avg_card = accumulate(card_lst, 0.0) / card_lst.size();
+    double var_card = (accumulate(card_lst,
+                                  0.0,
+                                  [avg_card](auto sum, auto elem)
+                                  { return sum + (elem - avg_card) * (elem - avg_card); }) /
+                       dist_lst.size());
+    stat_file << fmt::format("{},{},{},{},{},{},{},{},[{}],{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
                              file_parameters["fname"],
-                             file_parameters["dimensions"],
+                             file_parameters["number_of_dimensions"],
                              file_parameters["rows"],
                              file_parameters["min_values_for_all_dimensions"],
                              file_parameters["max_values_for_all_dimensions"],
                              alg_parameters.eps,
                              alg_parameters.order,
                              algorithm_type == "EPS-NB" ? 0 : 1,
-                             fmt::join(alg_parameters.r.values, ","),
+                             fmt::join(alg_parameters.r.values, " "),
                              time_out["reading_the_input_file"],
                              time_out["determining_min_and_max_values_for_each_dimension"],
                              time_out["time_calculating_distances_from_each_point_in_the_input_"
@@ -384,25 +338,14 @@ void print_to_file(std::string algorithm_type,
                              var_dist, // variance
                              min(card_lst),
                              max(card_lst),
-                             avg_dist,
-                             var_dist // variance
+                             avg_card,
+                             var_card // variance
     );
 }
 
-// D = [
-// ["F", [1.1, 3.0]],
-// ["C", [2.8, 3.5]],
-// ["A", [4.2, 4.0]],
-// ["K", [0.9, 0.0]],
-// ["L", [1.0, 1.5]],
-// ["G", [0.0, 2.4]],
-// ["H", [2.4, 2.0]],
-// ["B", [5.9, 3.9]]
-// ]
-
 struct CSVInput
 {
-    std::string header;
+    std::vector<std::string> header;
     Dataset dataset;
 };
 
@@ -413,12 +356,8 @@ CSVInput datafile_and_transform(const std::filesystem::path &filename)
     std::string line;
     std::getline(file, line);
     std::vector<std::string> tokenized;
-    boost::algorithm::split(tokenized, line, boost::is_any_of(","));
-    std::string header;
-    for (const auto &token : tokenized | drop(1))
-    {
-        header += fmt::format("v{},", token);
-    }
+    std::vector<std::string> tokenized_header;
+    boost::algorithm::split(tokenized_header, line, boost::is_any_of(","));
     while (file.good())
     {
         std::string line;
@@ -450,7 +389,7 @@ CSVInput datafile_and_transform(const std::filesystem::path &filename)
                 to<std::vector>)[0];
         d.data.push_back(p);
     };
-    return {header, d};
+    return {tokenized_header, d};
 }
 
 struct MinMax
@@ -480,7 +419,7 @@ MinMax determine_min_and_max_values_for_each_dimension(Dataset D)
     return {.min_values = min_values, .max_values = max_values};
 }
 
-void run_test_case(std::string input_fname, std::string rval, int m, double Epsval)
+void run_test_case(std::string input_fname, std::string rval, int m, double eps)
 {
     auto input_filepath = fmt::format("input_data/data/{}.csv",input_fname);
 
@@ -492,10 +431,15 @@ void run_test_case(std::string input_fname, std::string rval, int m, double Epsv
         determine_min_and_max_values_for_each_dimension(D);
     auto determining_min_and_max_values_for_each_dimension =
         duration_cast<milliseconds>(steady_clock::now() - time_now);
-
+    auto header = std::string{};
+    for(auto token : file_column_name | drop(1))
+    {
+        header += fmt::format("v{},",token);
+    }
     auto file_parameters = std::map<std::string_view, std::string>{
         {"fname", input_fname},
-        {"dimensions", file_column_name},
+        {"number_of_dimensions",fmt::format("{}",file_column_name.size()-1)},
+        {"dimensions", header},
         {"rows", fmt::format("{}", D.data.size())},
         {"min_values_for_all_dimensions",
          fmt::format("{}", fmt::join(min_values_for_all_dimensions.values, ","))},
@@ -515,18 +459,15 @@ void run_test_case(std::string input_fname, std::string rval, int m, double Epsv
     {
         r.values.resize(max_values_for_all_dimensions.values.size(), 0.0);
     }
-    double Eps =
-        max_values_for_all_dimensions.minkowskiDistanceTo(min_values_for_all_dimensions, 2) /
-        Epsval;
 
-    fmt::println("rval: {}, m: {}, Eps: {}, Epsval: {}", rval, m, Eps, Epsval);
+    fmt::println("rval: {}, m: {}, Eps: {}", rval, m, eps);
 
-    auto alg_paremteters = AlgParameters{.r = r, .order = m, .eps = Eps, .rval = rval};
+    auto alg_paremteters = AlgParameters{.r = r, .order = m, .eps = eps, .rval = rval};
 
     fmt::println("EPS-TI-NB");
 
     time_now = steady_clock::now();
-    auto [eps_ti_out_list, ti_time_to_calc_all_ref] = eps_ti_neighborhood(D, r, m, Eps);
+    auto [eps_ti_out_list, ti_time_to_calc_all_ref] = eps_ti_neighborhood(D, r, m, eps);
     auto total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
 
     // alg_out = prepare_alg_out(out_list = out_list)
@@ -545,13 +486,14 @@ void run_test_case(std::string input_fname, std::string rval, int m, double Epsv
 
     time_now = steady_clock::now();
 
-    auto [out_list, time_to_calc_all_ref] = eps_neighborhood(D, m, Eps);
+    auto [out_list, time_to_calc_all_ref] = eps_neighborhood(D, m, eps);
 
     total_time = duration_cast<milliseconds>(steady_clock::now() - time_now);
 
     file_parameters = std::map<std::string_view, std::string>{
         {"fname", input_fname},
-        {"dimensions", file_column_name},
+        {"number_of_dimensions",fmt::format("{}",file_column_name.size()-1)},
+        {"dimensions", header},
         {"rows", fmt::format("{}", D.data.size())},
         {"min_values_for_all_dimensions",
          fmt::format("{}", fmt::join(min_values_for_all_dimensions.values, ","))},
@@ -562,34 +504,37 @@ void run_test_case(std::string input_fname, std::string rval, int m, double Epsv
 
 int main()
 {
-    //    auto input_fname = std::string{"toy_dataset"};
-    //    input_fname = "wine_quality" # 15 25 35
-    //    input_fname = "2d_elastodynamic_metamaterials" # 35
+    auto input_fname = std::string{"toy_dataset"};
+//    auto input_fname = "wine_quality";
+//      auto  input_fname = "2d_elastodynamic_metamaterials";a
     //    input_fname = "dry_bean_dataset" # 35
 
-    auto r = std::string{"max"};
+    auto r = std::string{"0"};
     auto m = 2;
-    auto eps = 40;
+    auto eps = 1.8;
+    run_test_case(input_fname, r, m, eps);
 
-    for (auto input_fname : {"wine_quality"s })
-    {
-        m = 2;
-        eps = 50;
-        r = "0";
-        run_test_case(input_fname, r, m, eps);
-        r = "max";
-        run_test_case(input_fname, r, m, eps);
-        r = "min";
-        run_test_case(input_fname, r, m, eps);
-        r = "0";
-        eps = 45;
-        run_test_case(input_fname, r, m, eps);
-        eps = 55;
-        run_test_case(input_fname, r, m, eps);
-        eps = 50;
-        m = 1;
-        run_test_case(input_fname, r, m, eps);
-        m = 3;
-        run_test_case(input_fname, r, m, eps);
-    }
+//    for (auto input_fname : {"dry_bean_dataset"s, "wine_quality"s })
+//    for (auto input_fname : {"toy_dataset"s, "2d_elastodynamic_metamaterials"s, "dry_bean_dataset"s, "wine_quality"s })
+//    {
+//        fmt::println("{}",input_fname);
+//        m = 2;
+//        eps = 50;
+//        r = "0";
+//        run_test_case(input_fname, r, m, eps);
+//        r = "max";
+//        run_test_case(input_fname, r, m, eps);
+//        r = "min";
+//        run_test_case(input_fname, r, m, eps);
+//        r = "0";
+//        eps = 45;
+//        run_test_case(input_fname, r, m, eps);
+//        eps = 55;
+//        run_test_case(input_fname, r, m, eps);
+//        eps = 50;
+//        m = 1;
+//        run_test_case(input_fname, r, m, eps);
+//        m = 3;
+//        run_test_case(input_fname, r, m, eps);
+//    }
 }
