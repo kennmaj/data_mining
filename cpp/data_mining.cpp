@@ -545,37 +545,41 @@ void runTestCase(std::string input_fname,
 
 int main()
 {
-    auto input_fname = std::string{"toy_dataset"};
+    auto input_fname = std::string{"toy_dataset_2"};
     //    auto input_fname = "wine_quality";
     //    auto  input_fname = "2d_elastodynamic_metamaterials";a
     //    input_fname = "dry_bean_dataset" # 35
 
     auto r = std::string{"0"};
     auto m = 2;
-    auto eps = std::variant<double, std::string>{1.8};
-//    runTestCase(input_fname, r, m, eps);
+    auto eps = std::variant<double, std::string>{1.5};
+    runTestCase(input_fname, r, m, eps);
+    r = std::string{"max"};
+    runTestCase(input_fname, r, m, eps);
+    r = std::string{"min"};
+    runTestCase(input_fname, r, m, eps);
 
-        for (auto input_fname : {"toy_dataset"s, "2d_elastodynamic_metamaterials"s,
-        "dry_bean_dataset"s, "wine_quality"s })
-        {
-            fmt::println("{}",input_fname);
-            m = 2;
-            eps = "50";
-            r = "0";
-            runTestCase(input_fname, r, m, eps);
-            r = "max";
-            runTestCase(input_fname, r, m, eps);
-            r = "min";
-            runTestCase(input_fname, r, m, eps);
-            r = "0";
-            eps = "45";
-            runTestCase(input_fname, r, m, eps);
-            eps = "55";
-            runTestCase(input_fname, r, m, eps);
-            eps = "50";
-            m = 1;
-            runTestCase(input_fname, r, m, eps);
-            m = 3;
-            runTestCase(input_fname, r, m, eps);
-        }
+//        for (auto input_fname : {"toy_dataset"s, "2d_elastodynamic_metamaterials"s,
+//        "dry_bean_dataset"s, "wine_quality"s })
+//        {
+//            fmt::println("{}",input_fname);
+//            m = 2;
+//            eps = "50";
+//            r = "0";
+//            runTestCase(input_fname, r, m, eps);
+//            r = "max";
+//            runTestCase(input_fname, r, m, eps);
+//            r = "min";
+//            runTestCase(input_fname, r, m, eps);
+//            r = "0";
+//            eps = "45";
+//            runTestCase(input_fname, r, m, eps);
+//            eps = "55";
+//            runTestCase(input_fname, r, m, eps);
+//            eps = "50";
+//            m = 1;
+//            runTestCase(input_fname, r, m, eps);
+//            m = 3;
+//            runTestCase(input_fname, r, m, eps);
+//        }
 }
