@@ -486,9 +486,12 @@ void runTestCase(std::string input_fname,
     double epsval = std::visit(
         Overload{[&max_vector, &min_vector](std::string s)
                  {
-                     double pom = std::stod(s);
-                     return max_vector.minkowskiDistanceTo(min_vector, 2) /
+                     double pom = std::stoi(s);
+                     auto result = max_vector.minkowskiDistanceTo(min_vector, 2) /
                             pom;
+                        char buffer[100];
+                     snprintf(buffer, sizeof(buffer), "%.1f", result);
+                     return std::stod(buffer);
                  },
                  [](double s) { return s; }},
         eps);
@@ -550,29 +553,29 @@ int main()
     auto r = std::string{"0"};
     auto m = 2;
     auto eps = std::variant<double, std::string>{1.8};
-    runTestCase(input_fname, r, m, eps);
+//    runTestCase(input_fname, r, m, eps);
 
-    //    for (auto input_fname : {"toy_dataset"s, "2d_elastodynamic_metamaterials"s,
-    //    "dry_bean_dataset"s, "wine_quality"s })
-    //    {
-    //        fmt::println("{}",input_fname);
-    //        m = 2;
-    //        eps = "50";
-    //        r = "0";
-    //        runTestCase(input_fname, r, m, eps);
-    //        r = "max";
-    //        runTestCase(input_fname, r, m, eps);
-    //        r = "min";
-    //        runTestCase(input_fname, r, m, eps);
-    //        r = "0";
-    //        eps = "45";
-    //        runTestCase(input_fname, r, m, eps);
-    //        eps = "55";
-    //        runTestCase(input_fname, r, m, eps);
-    //        eps = "50";
-    //        m = 1;
-    //        runTestCase(input_fname, r, m, eps);
-    //        m = 3;
-    //        runTestCase(input_fname, r, m, eps);
-    //    }
+        for (auto input_fname : {"toy_dataset"s, "2d_elastodynamic_metamaterials"s,
+        "dry_bean_dataset"s, "wine_quality"s })
+        {
+            fmt::println("{}",input_fname);
+            m = 2;
+            eps = "50";
+            r = "0";
+            runTestCase(input_fname, r, m, eps);
+            r = "max";
+            runTestCase(input_fname, r, m, eps);
+            r = "min";
+            runTestCase(input_fname, r, m, eps);
+            r = "0";
+            eps = "45";
+            runTestCase(input_fname, r, m, eps);
+            eps = "55";
+            runTestCase(input_fname, r, m, eps);
+            eps = "50";
+            m = 1;
+            runTestCase(input_fname, r, m, eps);
+            m = 3;
+            runTestCase(input_fname, r, m, eps);
+        }
 }
